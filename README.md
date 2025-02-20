@@ -1,0 +1,2 @@
+# MiningBuddy
+mining-buddy
