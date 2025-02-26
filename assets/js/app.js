@@ -573,6 +573,7 @@ const MiningBuddy = {
             totalIskElem.textContent = this.formatIsk(totalIsk);
         }
     },
+    
     /**
      * Handle operation ending countdown
      * @param {number} countdown - Seconds remaining
@@ -605,7 +606,6 @@ const MiningBuddy = {
                 window.location.href = 'dashboard.php';
             }
         }
-    },
     },
     
     /**
