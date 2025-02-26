@@ -1,0 +1,492 @@
+/**
+ * Mining Buddy Custom Styles
+ * Dark theme styling inspired by EVE Online's UI
+ */
+
+:root {
+    /* EVE Online inspired color palette */
+    --eve-dark: #0a0a0a;
+    --eve-darker: #050505;
+    --eve-blue: #00a2ff;
+    --eve-blue-dark: #005380;
+    --eve-red: #ff3c3c;
+    --eve-orange: #ff8c00;
+    --eve-yellow: #ffb400;
+    --eve-green: #00b159;
+    --eve-light-gray: #aaaaaa;
+    --eve-mid-gray: #555555;
+    --eve-dark-gray: #222222;
+}
+
+/* Base styling */
+body {
+    background-color: var(--eve-dark);
+    color: #ffffff;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    /* Use a dark gradient background instead of an image */
+    background: linear-gradient(135deg, var(--eve-dark) 0%, var(--eve-darker) 100%);
+    background-attachment: fixed;
+}
+
+/* Add a subtle texturing to dark surfaces */
+.bg-dark {
+    background-color: rgba(10, 10, 10, 0.8) !important;
+}
+
+.card {
+    background-color: rgba(17, 17, 17, 0.9);
+    border: 1px solid var(--eve-mid-gray);
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+}
+
+.card-header {
+    background-color: var(--eve-dark-gray);
+    border-bottom: 1px solid var(--eve-mid-gray);
+}
+
+.table {
+    color: white;
+}
+
+.table-dark {
+    background-color: var(--eve-dark-gray);
+}
+
+/* Navigation styling */
+.navbar {
+    background-color: rgba(5, 5, 5, 0.9) !important;
+    box-shadow: 0 1px 10px rgba(0, 0, 0, 0.5);
+}
+
+.navbar-brand {
+    color: var(--eve-blue);
+    font-weight: bold;
+}
+
+.navbar-dark .navbar-nav .nav-link {
+    color: var(--eve-light-gray);
+}
+
+.navbar-dark .navbar-nav .nav-link:hover {
+    color: var(--eve-blue);
+}
+
+.navbar-dark .navbar-nav .active > .nav-link {
+    color: var(--eve-blue);
+}
+
+.dropdown-menu {
+    background-color: var(--eve-dark-gray);
+    border: 1px solid var(--eve-mid-gray);
+}
+
+.dropdown-item:hover {
+    background-color: var(--eve-blue-dark);
+}
+
+/* Button styling */
+.btn-primary {
+    background-color: var(--eve-blue-dark);
+    border-color: var(--eve-blue);
+}
+
+.btn-primary:hover, .btn-primary:focus {
+    background-color: var(--eve-blue);
+    border-color: var(--eve-blue);
+}
+
+.btn-success {
+    background-color: var(--eve-green);
+}
+
+.btn-danger {
+    background-color: var(--eve-red);
+}
+
+.btn-warning {
+    background-color: var(--eve-orange);
+    color: white;
+}
+
+.btn-outline-primary {
+    border-color: var(--eve-blue);
+    color: var(--eve-blue);
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--eve-blue);
+    color: white;
+}
+
+/* Form styling */
+.form-control {
+    background-color: var(--eve-dark-gray);
+    border: 1px solid var(--eve-mid-gray);
+    color: white;
+}
+
+.form-control:focus {
+    background-color: var(--eve-dark-gray);
+    border-color: var(--eve-blue);
+    color: white;
+    box-shadow: 0 0 0 0.25rem rgba(0, 162, 255, 0.25);
+}
+
+/* Alert styling */
+.alert {
+    border: none;
+    border-left: 4px solid;
+}
+
+.alert-success {
+    background-color: rgba(0, 177, 89, 0.2);
+    border-left-color: var(--eve-green);
+}
+
+.alert-danger {
+    background-color: rgba(255, 60, 60, 0.2);
+    border-left-color: var(--eve-red);
+}
+
+.alert-warning {
+    background-color: rgba(255, 180, 0, 0.2);
+    border-left-color: var(--eve-yellow);
+}
+
+.alert-info {
+    background-color: rgba(0, 162, 255, 0.2);
+    border-left-color: var(--eve-blue);
+}
+
+/* Custom EVE Online themed components */
+
+/* Operation status indicators */
+.participant-active {
+    background-color: rgba(0, 177, 89, 0.2);
+    border-left: 4px solid var(--eve-green);
+}
+
+.participant-left {
+    background-color: rgba(255, 60, 60, 0.2);
+    border-left: 4px solid var(--eve-red);
+}
+
+.participant-admin {
+    background-color: rgba(0, 162, 255, 0.2);
+    border-left: 4px solid var(--eve-blue);
+}
+
+/* Eve Online style blue glow effect */
+.eve-glow {
+    text-shadow: 0 0 5px var(--eve-blue);
+    color: var(--eve-blue);
+}
+
+/* Mining operation box */
+.operation-box {
+    background-color: rgba(17, 17, 17, 0.9);
+    border: 1px solid var(--eve-mid-gray);
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+}
+
+.operation-box:hover {
+    border-color: var(--eve-blue);
+    box-shadow: 0 0 15px rgba(0, 162, 255, 0.3);
+}
+
+.operation-title {
+    color: var(--eve-blue);
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+}
+
+.operation-stats {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 10px;
+    color: var(--eve-light-gray);
+}
+
+.operation-director {
+    font-weight: bold;
+    color: white;
+}
+
+/* Join code styling */
+.join-code {
+    font-family: monospace;
+    font-size: 1.5rem;
+    letter-spacing: 2px;
+    background-color: var(--eve-dark-gray);
+    padding: 10px 15px;
+    border-radius: 4px;
+    border: 1px solid var(--eve-mid-gray);
+    color: var(--eve-blue);
+    text-align: center;
+}
+
+/* Timer styling */
+.operation-timer {
+    font-family: monospace;
+    font-size: 1.2rem;
+    color: white;
+    padding: 5px 10px;
+    background-color: var(--eve-dark-gray);
+    border-radius: 4px;
+    display: inline-block;
+}
+
+/* EVE Character and Corporation styling */
+.eve-character {
+    display: flex;
+    align-items: center;
+}
+
+.eve-character-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    margin-right: 10px;
+    border: 1px solid var(--eve-mid-gray);
+}
+
+.eve-character-name {
+    color: white;
+    text-decoration: none;
+}
+
+.eve-character-name:hover {
+    color: var(--eve-blue);
+}
+
+.eve-corporation {
+    display: flex;
+    align-items: center;
+}
+
+.eve-corporation-logo {
+    width: 32px;
+    height: 32px;
+    margin-right: 10px;
+    border: 1px solid var(--eve-mid-gray);
+}
+
+.eve-corporation-name {
+    color: var(--eve-light-gray);
+    font-size: 0.9rem;
+    text-decoration: none;
+}
+
+.eve-corporation-name:hover {
+    color: var(--eve-blue);
+}
+
+/* Ore display styling */
+.ore-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+
+.ore-icon {
+    width: 24px;
+    height: 24px;
+    margin-right: 8px;
+    border: 1px solid var(--eve-mid-gray);
+}
+
+.ore-quantity {
+    color: white;
+    margin-left: 5px;
+}
+
+.ore-value {
+    color: var(--eve-green);
+    margin-left: auto;
+}
+
+/* ISK value styling */
+.isk-value {
+    color: var(--eve-green);
+    font-weight: bold;
+}
+
+.isk-negative {
+    color: var(--eve-red);
+}
+
+/* Operation countdown */
+.operation-ending {
+    color: var(--eve-red);
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-align: center;
+    padding: 10px;
+    background-color: rgba(255, 60, 60, 0.2);
+    border: 1px solid var(--eve-red);
+    border-radius: 4px;
+    margin: 20px 0;
+}
+
+.data-sync-countdown {
+    color: var(--eve-yellow);
+    font-size: 1.2rem;
+    text-align: center;
+    padding: 10px;
+    background-color: rgba(255, 180, 0, 0.2);
+    border: 1px solid var(--eve-yellow);
+    border-radius: 4px;
+    margin: 20px 0;
+}
+
+/* Top rankings styling */
+.ranking-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid var(--eve-mid-gray);
+}
+
+.ranking-position {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--eve-light-gray);
+    width: 40px;
+    text-align: center;
+}
+
+.ranking-top-1 {
+    color: gold;
+}
+
+.ranking-top-2 {
+    color: silver;
+}
+
+.ranking-top-3 {
+    color: #cd7f32; /* bronze */
+}
+
+.ranking-details {
+    flex-grow: 1;
+    margin-left: 10px;
+}
+
+.ranking-value {
+    color: var(--eve-green);
+    font-weight: bold;
+    margin-left: auto;
+}
+
+/* Stats cards */
+.stats-card {
+    background-color: rgba(17, 17, 17, 0.9);
+    border: 1px solid var(--eve-mid-gray);
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 20px;
+    height: 100%;
+}
+
+.stats-value {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: var(--eve-blue);
+    margin: 10px 0;
+}
+
+.stats-label {
+    color: var(--eve-light-gray);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+}
+
+/* Mining data update notice */
+.update-notice {
+    background-color: rgba(255, 140, 0, 0.1);
+    border: 1px solid var(--eve-orange);
+    border-radius: 4px;
+    padding: 10px;
+    margin: 10px 0;
+    font-size: 0.9rem;
+    color: var(--eve-light-gray);
+}
+
+/* Loading spinner */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(0, 162, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--eve-blue);
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Admin actions toolbar */
+.admin-actions {
+    background-color: var(--eve-dark-gray);
+    border: 1px solid var(--eve-mid-gray);
+    border-radius: 4px;
+    padding: 10px;
+    margin: 15px 0;
+}
+
+/* Last update indicator */
+.last-update {
+    font-size: 0.8rem;
+    color: var(--eve-light-gray);
+    text-align: right;
+    margin-top: 5px;
+}
+
+/* Token status indicator */
+.token-status {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+.token-status-valid {
+    background-color: var(--eve-green);
+}
+
+.token-status-refreshing {
+    background-color: var(--eve-yellow);
+}
+
+.token-status-error {
+    background-color: var(--eve-red);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .operation-stats {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .join-code {
+        font-size: 1.2rem;
+    }
+    
+    .ranking-position {
+        width: 30px;
+        font-size: 1.2rem;
+    }
+    
+    .eve-character-avatar, .eve-corporation-logo {
+        width: 24px;
+        height: 24px;
+    }
+}
