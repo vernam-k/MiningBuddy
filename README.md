@@ -2,6 +2,11 @@
 
 Mining Buddy is a web application for EVE Online players to track mining operations, monitor profits, and optimize mining fleet efficiency. It uses the EVE Online ESI API to fetch real-time data about mining activities and market prices.
 
+<div align="center">
+  <p><img src="https://i.imgur.com/wreRmia.png" alt="Mining Buddy Dashboard" width="650"></p>
+  <p><img src="https://i.imgur.com/VkqkYpU.png" alt="Mining Buddy Operation" width="650"></p>
+</div>
+
 ## Features
 
 - **EVE Online SSO Authentication**: Secure login using EVE Online's Single Sign-On
