@@ -106,32 +106,8 @@ try {
     $totalIskResult = $stmt->fetch();
     $totalIsk = $totalIskResult ? floatval($totalIskResult['total_isk']) : 0;
     
-    // Check if operation is ending
+    // No countdown needed since operations end immediately
     $countdown = null;
-    if ($operation['status'] === 'ending') {
-        // Calculate seconds remaining
-        $endingTime = strtotime($operation['ended_at']) - 5; // 5 seconds countdown
-        $now = time();
-        $countdown = max(0, $endingTime - $now);
-        
-        // If countdown is zero, update operation status to ended
-        if ($countdown === 0) {
-            $updateStmt = $db->prepare("
-                UPDATE mining_operations
-                SET status = 'ended', termination_type = 'manual'
-                WHERE operation_id = ? AND status = 'ending'
-            ");
-            $updateStmt->execute([$operationId]);
-            
-            // Update operation status in the current response
-            $operation['status'] = 'ended';
-        }
-    } else if ($operation['status'] === 'syncing') {
-        // Calculate seconds remaining in sync period
-        $syncEndTime = strtotime($operation['ended_at']) + 600; // 10 minutes sync
-        $now = time();
-        $countdown = max(0, $syncEndTime - $now);
-    }
     
     // Prepare response
     $response = [

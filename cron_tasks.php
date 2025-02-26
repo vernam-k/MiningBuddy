@@ -24,13 +24,16 @@ try {
     // Task 1: Check for inactive operations
     checkInactiveOperations($db);
     
-    // Task 2: Update market prices
+    // Task 2: Clean up unfinished operations
+    cleanupUnfinishedOperations($db);
+    
+    // Task 3: Update market prices
     updateMarketPrices($db);
     
-    // Task 3: Refresh expiring tokens
+    // Task 4: Refresh expiring tokens
     refreshExpiringTokens($db);
     
-    // Task 4: Generate statistics
+    // Task 5: Generate statistics
     generateStatistics($db);
     
     // Log successful completion
@@ -73,6 +76,7 @@ function checkInactiveOperations($db) {
             $db->beginTransaction();
             
             // Update operation status to ending
+            // Update operation status to ending (will transition to ended after countdown)
             $stmt = $db->prepare("
                 UPDATE mining_operations
                 SET status = 'ending', ended_at = DATE_ADD(NOW(), INTERVAL 5 SECOND),
@@ -81,9 +85,111 @@ function checkInactiveOperations($db) {
             ");
             $stmt->execute([$operation['operation_id']]);
             
+            // Get users in this operation
+            $stmt = $db->prepare("
+                SELECT user_id FROM users
+                WHERE active_operation_id = ?
+            ");
+            $stmt->execute([$operation['operation_id']]);
+            $affectedUsers = $stmt->rowCount();
+            
+            // Clear active_operation_id for all participants immediately
+            // This way they won't see it as active on their dashboard
+            $stmt = $db->prepare("
+                UPDATE users
+                SET active_operation_id = NULL
+                WHERE active_operation_id = ?
+            ");
+            $stmt->execute([$operation['operation_id']]);
+            
+            // Handle the operation_participants update carefully to avoid constraint issues
+            // Check for participants who already have 'left' OR 'kicked' status in other operations
+            // This prevents the "Duplicate entry for key 'unique_active_participant'" error
+            $stmt = $db->prepare("
+                SELECT op.user_id,
+                    (SELECT GROUP_CONCAT(DISTINCT status)
+                     FROM operation_participants
+                     WHERE user_id = op.user_id AND operation_id != ? AND status IN ('left', 'kicked')
+                    ) as existing_statuses
+                FROM operation_participants op
+                WHERE op.operation_id = ? AND op.status = 'active'
+                HAVING existing_statuses IS NOT NULL
+            ");
+            $stmt->execute([$operation['operation_id'], $operation['operation_id']]);
+            $potentialConflicts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Group users by what statuses they already have in other operations
+            $usersWithLeftStatus = [];
+            $usersWithKickedStatus = [];
+            $usersWithBothStatuses = [];
+            
+            foreach ($potentialConflicts as $conflict) {
+                $statuses = explode(',', $conflict['existing_statuses']);
+                if (in_array('left', $statuses) && in_array('kicked', $statuses)) {
+                    $usersWithBothStatuses[] = $conflict['user_id'];
+                } else if (in_array('left', $statuses)) {
+                    $usersWithLeftStatus[] = $conflict['user_id'];
+                } else if (in_array('kicked', $statuses)) {
+                    $usersWithKickedStatus[] = $conflict['user_id'];
+                }
+            }
+            
+            // Handle users who already have both 'left' and 'kicked' statuses in other operations
+            // For these users, we need to delete their participant record instead of updating status
+            if (!empty($usersWithBothStatuses)) {
+                $placeholders = implode(',', array_fill(0, count($usersWithBothStatuses), '?'));
+                $params = array_merge([$operation['operation_id']], $usersWithBothStatuses);
+                
+                $deleteStmt = $db->prepare("
+                    DELETE FROM operation_participants
+                    WHERE operation_id = ? AND status = 'active' AND user_id IN ($placeholders)
+                ");
+                $deleteStmt->execute($params);
+                
+                logMessage("Deleted " . count($usersWithBothStatuses) . " participants with both 'left' and 'kicked' conflicts for operation #" . $operation['operation_id'], 'info');
+            }
+            
+            // Handle users who already have 'left' status in other operations
+            if (!empty($usersWithLeftStatus)) {
+                $placeholders = implode(',', array_fill(0, count($usersWithLeftStatus), '?'));
+                $params = array_merge([$operation['operation_id']], $usersWithLeftStatus);
+                
+                $kickedStmt = $db->prepare("
+                    UPDATE operation_participants
+                    SET status = 'kicked', leave_time = NOW()
+                    WHERE operation_id = ? AND status = 'active' AND user_id IN ($placeholders)
+                ");
+                $kickedStmt->execute($params);
+                
+                logMessage("Updated " . count($usersWithLeftStatus) . " participants with 'left' conflicts to 'kicked' status for operation #" . $operation['operation_id'], 'info');
+            }
+            
+            // Handle users who already have 'kicked' status in other operations
+            if (!empty($usersWithKickedStatus)) {
+                $placeholders = implode(',', array_fill(0, count($usersWithKickedStatus), '?'));
+                $params = array_merge([$operation['operation_id']], $usersWithKickedStatus);
+                
+                $bannedStmt = $db->prepare("
+                    UPDATE operation_participants
+                    SET status = 'banned', leave_time = NOW()
+                    WHERE operation_id = ? AND status = 'active' AND user_id IN ($placeholders)
+                ");
+                $bannedStmt->execute($params);
+                
+                logMessage("Updated " . count($usersWithKickedStatus) . " participants with 'kicked' conflicts to 'banned' status for operation #" . $operation['operation_id'], 'info');
+            }
+            
+            // For the remaining participants, use 'left' status as normal
+            $stmt = $db->prepare("
+                UPDATE operation_participants
+                SET status = 'left', leave_time = NOW()
+                WHERE operation_id = ? AND status = 'active'
+            ");
+            $stmt->execute([$operation['operation_id']]);
+            
             $db->commit();
             
-            logMessage('Auto-ended inactive operation #' . $operation['operation_id'] . ': ' . $operation['title'], 'info');
+            logMessage('Auto-ended inactive operation #' . $operation['operation_id'] . ': ' . $operation['title'] . ' and cleared ' . $affectedUsers . ' participants', 'info');
             
         } catch (Exception $e) {
             if ($db->inTransaction()) {

@@ -112,6 +112,51 @@ const MiningBuddy = {
         if (!this.operation.id) {
             return;
         }
+
+        // Check for ending or ended status in the DOM
+        const endingElem = document.getElementById('operation-ending-countdown');
+        const endedElem = document.getElementById('operation-ended');
+        const operationStatusElem = document.querySelector('.operation-status');
+        
+        let isEnding = false;
+        let isEnded = false;
+        
+        if (endingElem || endedElem) {
+            isEnding = !!endingElem;
+            isEnded = !!endedElem;
+        } else if (operationStatusElem) {
+            const status = operationStatusElem.getAttribute('data-status');
+            isEnding = status === 'ending' || status === 'syncing';
+            isEnded = status === 'ended';
+        }
+        
+        // If operation is already ending or ended, don't start update timers
+        if (isEnding || isEnded) {
+            console.log('Operation is already ending or ended, not starting update timers');
+            this.operation.status = isEnding ? 'ending' : 'ended';
+            
+            // Show appropriate message
+            if (isEnding && !endingElem) {
+                let countdownElem = document.createElement('div');
+                countdownElem.id = 'operation-ending-countdown';
+                countdownElem.className = 'operation-ending';
+                document.querySelector('.operation-container').prepend(countdownElem);
+                countdownElem.textContent = 'Operation is ending...';
+            } else if (isEnded && !endedElem) {
+                let endedElement = document.createElement('div');
+                endedElement.id = 'operation-ended';
+                endedElement.className = 'operation-ended';
+                document.querySelector('.operation-container').prepend(endedElement);
+                endedElement.textContent = 'Operation has ended.';
+            }
+            
+            // Disable action buttons
+            document.querySelectorAll('.kick-participant-btn, .ban-participant-btn, .promote-participant-btn, #leave-operation-btn, #end-operation-btn').forEach(btn => {
+                btn.disabled = true;
+            });
+            
+            return;
+        }
         
         // Update operation timer
         this.updateOperationTimer();
@@ -122,19 +167,28 @@ const MiningBuddy = {
         // Start participant status updates
         this.getParticipantStatus();
         this.config.timers.participantUpdater = setInterval(() => {
-            this.getParticipantStatus();
+            // Only make API calls if the operation is still active
+            if (this.operation.status === 'active') {
+                this.getParticipantStatus();
+            }
         }, this.config.updateIntervals.participantStatus);
         
         // Start mining data updates
         this.getMiningData();
         this.config.timers.miningDataUpdater = setInterval(() => {
-            this.getMiningData();
+            // Only make API calls if the operation is still active
+            if (this.operation.status === 'active') {
+                this.getMiningData();
+            }
         }, this.config.updateIntervals.miningData);
         
         // Start token checker
         this.checkTokenStatus();
         this.config.timers.tokenChecker = setInterval(() => {
-            this.checkTokenStatus();
+            // Only make API calls if the operation is still active
+            if (this.operation.status === 'active') {
+                this.checkTokenStatus();
+            }
         }, this.config.updateIntervals.tokenCheck);
         
         // Initialize admin action handlers
@@ -145,10 +199,21 @@ const MiningBuddy = {
         // Initialize leave operation handler
         const leaveBtn = document.getElementById('leave-operation-btn');
         if (leaveBtn) {
-            leaveBtn.addEventListener('click', (e) => {
+            // Remove any existing event listeners
+            const newLeaveBtn = leaveBtn.cloneNode(true);
+            leaveBtn.parentNode.replaceChild(newLeaveBtn, leaveBtn);
+            
+            newLeaveBtn.addEventListener('click', (e) => {
                 e.preventDefault();
+                
+                // Disable button immediately
+                newLeaveBtn.disabled = true;
+                
                 if (confirm('Are you sure you want to leave this operation?')) {
                     this.performParticipantAction('leave');
+                } else {
+                    // Re-enable if canceled
+                    newLeaveBtn.disabled = false;
                 }
             });
         }
@@ -206,11 +271,22 @@ const MiningBuddy = {
         // End operation
         const endOpBtn = document.getElementById('end-operation-btn');
         if (endOpBtn) {
-            endOpBtn.addEventListener('click', (e) => {
+            // Remove any existing event listeners by cloning and replacing the element
+            const newEndOpBtn = endOpBtn.cloneNode(true);
+            endOpBtn.parentNode.replaceChild(newEndOpBtn, endOpBtn);
+            
+            // Add the event listener to the new button
+            newEndOpBtn.addEventListener('click', (e) => {
                 e.preventDefault();
+                
+                // Disable button immediately to prevent multiple clicks
+                newEndOpBtn.disabled = true;
                 
                 if (confirm('Are you sure you want to end this mining operation?')) {
                     this.performAdminAction('end');
+                } else {
+                    // Re-enable the button if the user cancels
+                    newEndOpBtn.disabled = false;
                 }
             });
         }
@@ -285,6 +361,11 @@ const MiningBuddy = {
             return;
         }
         
+        // Don't make API calls if the operation is not active
+        if (this.operation.status !== 'active') {
+            return;
+        }
+        
         fetch(this.config.api.operationStatus + '?operation_id=' + this.operation.id)
             .then(response => {
                 if (!response.ok) {
@@ -293,6 +374,22 @@ const MiningBuddy = {
                 return response.json();
             })
             .then(data => {
+                // Check if API returned an error
+                if (!data.success) {
+                    // If it's the "not in operation" error, handle it gracefully
+                    if (data.message && data.message.includes('not in this operation')) {
+                        console.log('User no longer in operation, redirecting to dashboard');
+                        // Stop all timers
+                        this.stopUpdateTimers();
+                        // Redirect to dashboard after a short delay
+                        setTimeout(() => {
+                            window.location.href = 'dashboard.php';
+                        }, 500);
+                        return;
+                    }
+                    throw new Error(data.message || 'Unknown error');
+                }
+                
                 this.operation.lastParticipantUpdate = new Date();
                 
                 // Update operation status
@@ -314,10 +411,24 @@ const MiningBuddy = {
                 this.updateTotalIsk(data.total_isk);
                 
                 // Update last update time
-                document.getElementById('last-participant-update').textContent = new Date().toLocaleTimeString();
+                const updateTimeElem = document.getElementById('last-participant-update');
+                if (updateTimeElem) {
+                    updateTimeElem.textContent = new Date().toLocaleTimeString();
+                }
             })
             .catch(error => {
                 console.error('Error fetching participant status:', error);
+                
+                // If the error contains "not in this operation", handle it gracefully
+                if (error.message && error.message.includes('not in this operation')) {
+                    console.log('User no longer in operation, redirecting to dashboard');
+                    // Stop all timers
+                    this.stopUpdateTimers();
+                    // Redirect to dashboard after a short delay
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.php';
+                    }, 500);
+                }
             });
     },
     
@@ -326,6 +437,11 @@ const MiningBuddy = {
      */
     getMiningData: function() {
         if (!this.operation.id) {
+            return;
+        }
+        
+        // Don't make API calls if the operation is not active
+        if (this.operation.status !== 'active') {
             return;
         }
         
@@ -342,6 +458,22 @@ const MiningBuddy = {
                 return response.json();
             })
             .then(data => {
+                // Check if API returned an error
+                if (!data.success) {
+                    // If it's the "not in operation" error, handle it gracefully
+                    if (data.message && data.message.includes('not in this operation')) {
+                        console.log('User no longer in operation, redirecting to dashboard');
+                        // Stop all timers
+                        this.stopUpdateTimers();
+                        // Redirect to dashboard after a short delay
+                        setTimeout(() => {
+                            window.location.href = 'dashboard.php';
+                        }, 500);
+                        return;
+                    }
+                    throw new Error(data.message || 'Unknown error');
+                }
+                
                 this.operation.lastMiningUpdate = new Date();
                 
                 // Update mining data for each participant
@@ -355,7 +487,10 @@ const MiningBuddy = {
                 }
                 
                 // Update last update time
-                document.getElementById('last-mining-update').textContent = new Date().toLocaleTimeString();
+                const updateTimeElem = document.getElementById('last-mining-update');
+                if (updateTimeElem) {
+                    updateTimeElem.textContent = new Date().toLocaleTimeString();
+                }
                 
                 if (loadingIndicator) {
                     loadingIndicator.style.display = 'none';
@@ -363,6 +498,18 @@ const MiningBuddy = {
             })
             .catch(error => {
                 console.error('Error fetching mining data:', error);
+                
+                // If the error contains "not in operation", handle it gracefully
+                if (error.message && error.message.includes('not in this operation')) {
+                    console.log('User no longer in operation, redirecting to dashboard');
+                    // Stop all timers
+                    this.stopUpdateTimers();
+                    // Redirect to dashboard after a short delay
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.php';
+                    }, 500);
+                }
+                
                 if (loadingIndicator) {
                     loadingIndicator.style.display = 'none';
                 }
@@ -732,19 +879,58 @@ const MiningBuddy = {
         .then(data => {
             if (data.success) {
                 if (action === 'end') {
-                    // Operation will start ending countdown
-                    // The next status update will handle UI changes
+                    // Operation has ended, stop all update timers
+                    this.stopUpdateTimers();
+                    
+                    // Show ended message
+                    let endedElem = document.getElementById('operation-ended');
+                    if (!endedElem) {
+                        endedElem = document.createElement('div');
+                        endedElem.id = 'operation-ended';
+                        endedElem.className = 'operation-ended';
+                        document.querySelector('.operation-container').prepend(endedElem);
+                    }
+                    endedElem.textContent = 'Operation has ended.';
+                    
+                    // Disable all action buttons
+                    document.querySelectorAll('.kick-participant-btn, .ban-participant-btn, .promote-participant-btn, #leave-operation-btn, #end-operation-btn').forEach(btn => {
+                        btn.disabled = true;
+                    });
+                    
+                    // Set operation status
+                    this.operation.status = 'ended';
+                    
+                    // Redirect to dashboard after a short delay
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.php';
+                    }, 2000);
                 } else {
                     // Update participant list on next update
                     this.getParticipantStatus();
                 }
             } else {
                 alert(data.message || 'Error performing action');
+                
+                // Re-enable the end operation button if it was an end action
+                if (action === 'end') {
+                    const endOpBtn = document.getElementById('end-operation-btn');
+                    if (endOpBtn) {
+                        endOpBtn.disabled = false;
+                    }
+                }
             }
         })
         .catch(error => {
             console.error('Error performing admin action:', error);
             alert('An error occurred while performing action');
+            
+            // Re-enable the end operation button if it was an end action
+            if (action === 'end') {
+                const endOpBtn = document.getElementById('end-operation-btn');
+                if (endOpBtn) {
+                    endOpBtn.disabled = false;
+                }
+            }
         });
     },
     
@@ -757,6 +943,11 @@ const MiningBuddy = {
             return;
         }
         
+        // Don't make API calls if the operation is not active
+        if (this.operation.status !== 'active') {
+            return;
+        }
+        
         fetch(this.config.api.tokenRefresh + '?check=1')
             .then(response => {
                 if (!response.ok) {
@@ -765,31 +956,56 @@ const MiningBuddy = {
                 return response.json();
             })
             .then(data => {
+                // Check if API returned an authentication error
+                if (!data.success && data.message && data.message.includes('not in this operation')) {
+                    console.log('User no longer in operation, redirecting to dashboard');
+                    // Stop all timers
+                    this.stopUpdateTimers();
+                    // Redirect to dashboard after a short delay
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.php';
+                    }, 500);
+                    return;
+                }
+                
                 this.token.status = data.status;
                 
                 // Update token status indicator
                 const statusIndicator = document.querySelector('.token-status');
-                statusIndicator.className = 'token-status';
-                
-                if (data.status === 'valid') {
-                    statusIndicator.classList.add('token-status-valid');
-                    tokenStatusElem.textContent = 'Valid';
-                } else if (data.status === 'refreshing') {
-                    statusIndicator.classList.add('token-status-refreshing');
-                    tokenStatusElem.textContent = 'Refreshing...';
-                } else if (data.status === 'error') {
-                    statusIndicator.classList.add('token-status-error');
-                    tokenStatusElem.textContent = 'Error';
+                if (statusIndicator) {
+                    statusIndicator.className = 'token-status';
                     
-                    // If token has a persistent error, show message
-                    if (data.message) {
-                        alert('Token error: ' + data.message + ' Please login again.');
-                        window.location.href = 'logout.php';
+                    if (data.status === 'valid') {
+                        statusIndicator.classList.add('token-status-valid');
+                        tokenStatusElem.textContent = 'Valid';
+                    } else if (data.status === 'refreshing') {
+                        statusIndicator.classList.add('token-status-refreshing');
+                        tokenStatusElem.textContent = 'Refreshing...';
+                    } else if (data.status === 'error') {
+                        statusIndicator.classList.add('token-status-error');
+                        tokenStatusElem.textContent = 'Error';
+                        
+                        // If token has a persistent error, don't show an alert, just redirect
+                        if (data.message) {
+                            console.log('Token error: ' + data.message + '. Redirecting to login.');
+                            window.location.href = 'logout.php';
+                        }
                     }
                 }
             })
             .catch(error => {
                 console.error('Error checking token status:', error);
+                
+                // If the error contains "not in this operation", handle it gracefully
+                if (error.message && error.message.includes('not in this operation')) {
+                    console.log('User no longer in operation, redirecting to dashboard');
+                    // Stop all timers
+                    this.stopUpdateTimers();
+                    // Redirect to dashboard after a short delay
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.php';
+                    }, 500);
+                }
             });
     },
     

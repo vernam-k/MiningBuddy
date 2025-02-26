@@ -197,6 +197,31 @@ function calculateTotalIsk($miningData) {
 $miningData = getMiningData($operation['operation_id']);
 $totalIsk = calculateTotalIsk($miningData);
 
+// Check if operation was created very recently (within 2 minutes)
+// If so, explicitly set mining data to zero to prevent showing historical data
+$operationCreatedTime = strtotime($operation['created_at']);
+$currentTime = time();
+$operationAgeInSeconds = $currentTime - $operationCreatedTime;
+
+if ($operationAgeInSeconds < 120) { // Less than 2 minutes old
+    // Check if there are update snapshots after the initial snapshots
+    $db = getDbConnection();
+    $stmt = $db->prepare("
+        SELECT COUNT(*) as update_count
+        FROM mining_ledger_snapshots
+        WHERE operation_id = ? AND snapshot_type = 'update'
+    ");
+    $stmt->execute([$operation['operation_id']]);
+    $updateCount = $stmt->fetchColumn();
+    
+    // If there are no update snapshots yet, zero out the mining data
+    // This prevents showing historical data before the first update
+    if ($updateCount == 0) {
+        $miningData = [];
+        $totalIsk = 0;
+    }
+}
+
 // Add JavaScript variables and functions for this page
 $extraScripts = '
 <script>
@@ -227,6 +252,7 @@ document.addEventListener("DOMContentLoaded", function() {
             <?php if (!empty($operation['description'])): ?>
                 <p class="text-muted mt-2"><?= htmlspecialchars($operation['description']) ?></p>
             <?php endif; ?>
+            <div class="operation-status" data-status="<?= $operation['status'] ?>" style="display: none;"></div>
         </div>
         
         <div class="col-md-4 text-md-end">

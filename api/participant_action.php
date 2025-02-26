@@ -442,19 +442,116 @@ try {
             
             $db->beginTransaction();
             
-            // Update operation status to ending
+            // Update operation status to ended immediately
             $stmt = $db->prepare("
                 UPDATE mining_operations
-                SET status = 'ending', ended_at = DATE_ADD(NOW(), INTERVAL 5 SECOND)
+                SET status = 'ended', ended_at = NOW(), termination_type = 'manual'
                 WHERE operation_id = ?
+            ");
+            $stmt->execute([$operationId]);
+            
+            // Clear active_operation_id for all participants immediately
+            // This gives immediate feedback rather than waiting for operation_status.php
+            $stmt = $db->prepare("
+                UPDATE users
+                SET active_operation_id = NULL
+                WHERE active_operation_id = ?
+            ");
+            $stmt->execute([$operationId]);
+            
+            // Handle the operation_participants update carefully to avoid constraint issues
+            // Check for participants who already have 'left' OR 'kicked' status in other operations
+            // This prevents the "Duplicate entry for key 'unique_active_participant'" error
+            $stmt = $db->prepare("
+                SELECT op.user_id,
+                    (SELECT GROUP_CONCAT(DISTINCT status)
+                     FROM operation_participants
+                     WHERE user_id = op.user_id AND operation_id != ? AND status IN ('left', 'kicked')
+                    ) as existing_statuses
+                FROM operation_participants op
+                WHERE op.operation_id = ? AND op.status = 'active'
+                HAVING existing_statuses IS NOT NULL
+            ");
+            $stmt->execute([$operationId, $operationId]);
+            $potentialConflicts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Group users by what statuses they already have in other operations
+            $usersWithLeftStatus = [];
+            $usersWithKickedStatus = [];
+            $usersWithBothStatuses = [];
+            
+            foreach ($potentialConflicts as $conflict) {
+                $statuses = explode(',', $conflict['existing_statuses']);
+                if (in_array('left', $statuses) && in_array('kicked', $statuses)) {
+                    $usersWithBothStatuses[] = $conflict['user_id'];
+                } else if (in_array('left', $statuses)) {
+                    $usersWithLeftStatus[] = $conflict['user_id'];
+                } else if (in_array('kicked', $statuses)) {
+                    $usersWithKickedStatus[] = $conflict['user_id'];
+                }
+            }
+            
+            // Handle users who already have both 'left' and 'kicked' statuses in other operations
+            // For these users, we need to delete their participant record instead of updating status
+            if (!empty($usersWithBothStatuses)) {
+                $placeholders = implode(',', array_fill(0, count($usersWithBothStatuses), '?'));
+                $params = array_merge([$operationId], $usersWithBothStatuses);
+                
+                $stmt = $db->prepare("
+                    DELETE FROM operation_participants
+                    WHERE operation_id = ? AND status = 'active' AND user_id IN ($placeholders)
+                ");
+                $stmt->execute($params);
+                
+                logMessage("Deleted " . count($usersWithBothStatuses) . " participants with both 'left' and 'kicked' conflicts for operation #$operationId", 'info');
+            }
+            
+            // Handle users who already have 'left' status in other operations
+            if (!empty($usersWithLeftStatus)) {
+                $placeholders = implode(',', array_fill(0, count($usersWithLeftStatus), '?'));
+                $params = array_merge([$operationId], $usersWithLeftStatus);
+                
+                $stmt = $db->prepare("
+                    UPDATE operation_participants
+                    SET status = 'kicked', leave_time = NOW()
+                    WHERE operation_id = ? AND status = 'active' AND user_id IN ($placeholders)
+                ");
+                $stmt->execute($params);
+                
+                logMessage("Updated " . count($usersWithLeftStatus) . " participants with 'left' conflicts to 'kicked' status for operation #$operationId", 'info');
+            }
+            
+            // Handle users who already have 'kicked' status in other operations
+            if (!empty($usersWithKickedStatus)) {
+                $placeholders = implode(',', array_fill(0, count($usersWithKickedStatus), '?'));
+                $params = array_merge([$operationId], $usersWithKickedStatus);
+                
+                $stmt = $db->prepare("
+                    UPDATE operation_participants
+                    SET status = 'banned', leave_time = NOW()
+                    WHERE operation_id = ? AND status = 'active' AND user_id IN ($placeholders)
+                ");
+                $stmt->execute($params);
+                
+                logMessage("Updated " . count($usersWithKickedStatus) . " participants with 'kicked' conflicts to 'banned' status for operation #$operationId", 'info');
+            }
+            
+            // For the remaining participants, use 'left' status as normal
+            $stmt = $db->prepare("
+                UPDATE operation_participants
+                SET status = 'left', leave_time = NOW()
+                WHERE operation_id = ? AND status = 'active'
             ");
             $stmt->execute([$operationId]);
             
             $db->commit();
             
+            // Log the action
+            logMessage("Operation #$operationId manually ended by user #$user[user_id] and participants cleared", 'info');
+            
             echo json_encode([
                 'success' => true,
-                'message' => 'Operation is ending'
+                'message' => 'Operation has ended'
             ]);
             
             break;

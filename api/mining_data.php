@@ -190,6 +190,29 @@ try {
     ");
     $stmt->execute();
     $marketPrices = $stmt->fetchAll();
+    // Check if operation was created very recently (within 2 minutes)
+    // If so, explicitly set mining data to zero to prevent showing historical data
+    $operationCreatedTime = strtotime($operation['created_at']);
+    $currentTime = time();
+    $operationAgeInSeconds = $currentTime - $operationCreatedTime;
+
+    if ($operationAgeInSeconds < 120) { // Less than 2 minutes old
+        // Check if there are update snapshots after the initial snapshots
+        $stmt = $db->prepare("
+            SELECT COUNT(*) as update_count
+            FROM mining_ledger_snapshots
+            WHERE operation_id = ? AND snapshot_type = 'update' AND snapshot_time > ?
+        ");
+        $stmt->execute([$operationId, $operation['created_at']]);
+        $updateCount = $stmt->fetchColumn();
+        
+        // If there are no meaningful update snapshots yet, zero out the mining data
+        // This prevents showing historical data before the first substantial update
+        if ($updateCount < 2) { // Need at least 2 updates to show meaningful progress
+            logMessage("New operation detected - zeroing mining data for operation #$operationId", 'info');
+            $miningData = [];
+        }
+    }
     
     // Prepare response
     $response = [

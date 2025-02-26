@@ -78,18 +78,18 @@ $operation = $inOperation ? getCurrentOperation() : null;
                         <?php if (isLoggedIn()): ?>
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                                    <?php if (!empty($currentUser['avatar_url'])): ?>
-                                        <img src="<?= htmlspecialchars($currentUser['avatar_url']) ?>" 
-                                             alt="<?= htmlspecialchars($currentUser['character_name']) ?>" 
-                                             class="rounded-circle me-1" 
+                                    <?php if ($currentUser && !empty($currentUser['avatar_url'])): ?>
+                                        <img src="<?= htmlspecialchars($currentUser['avatar_url']) ?>"
+                                             alt="<?= htmlspecialchars($currentUser['character_name'] ?? 'Unknown') ?>"
+                                             class="rounded-circle me-1"
                                              style="width: 24px; height: 24px;">
                                     <?php endif; ?>
-                                    <?= htmlspecialchars($currentUser['character_name']) ?>
+                                    <?= $currentUser ? htmlspecialchars($currentUser['character_name']) : 'Unknown User' ?>
                                 </a>
                                 <div class="dropdown-menu dropdown-menu-end bg-dark border-secondary">
                                     <div class="dropdown-item text-light">
                                         <small class="text-muted">Corporation:</small><br>
-                                        <?= htmlspecialchars($currentUser['corporation_name']) ?>
+                                        <?= $currentUser ? htmlspecialchars($currentUser['corporation_name'] ?? 'Unknown') : 'Unknown Corporation' ?>
                                     </div>
                                     <div class="dropdown-divider border-secondary"></div>
                                     <a class="dropdown-item text-light" href="<?= APP_URL ?>/dashboard.php">
