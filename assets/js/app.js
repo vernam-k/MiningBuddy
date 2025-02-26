@@ -18,11 +18,11 @@ const MiningBuddy = {
         
         // API endpoints
         api: {
-            operationStatus: '/api/operation_status.php',
-            miningData: '/api/mining_data.php',
-            marketPrices: '/api/market_prices.php',
-            tokenRefresh: '/api/token_refresh.php',
-            participantAction: '/api/participant_action.php'
+            operationStatus: 'api/operation_status.php',
+            miningData: 'api/mining_data.php',
+            marketPrices: 'api/market_prices.php',
+            tokenRefresh: 'api/token_refresh.php',
+            participantAction: 'api/participant_action.php'
         },
         
         // Timers and intervals
@@ -677,7 +677,7 @@ const MiningBuddy = {
             if (data.success) {
                 if (action === 'leave') {
                     // Redirect to dashboard
-                    window.location.href = '/dashboard.php';
+                    window.location.href = 'dashboard.php';
                 }
             } else {
                 alert(data.message || 'Error performing action');
@@ -772,7 +772,7 @@ const MiningBuddy = {
                     // If token has a persistent error, show message
                     if (data.message) {
                         alert('Token error: ' + data.message + ' Please login again.');
-                        window.location.href = '/logout.php';
+                        window.location.href = 'logout.php';
                     }
                 }
             })
