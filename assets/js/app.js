@@ -573,7 +573,6 @@ const MiningBuddy = {
             totalIskElem.textContent = this.formatIsk(totalIsk);
         }
     },
-    
     /**
      * Handle operation ending countdown
      * @param {number} countdown - Seconds remaining
@@ -590,10 +589,23 @@ const MiningBuddy = {
         
         countdownElem.textContent = `Operation ending in ${countdown} seconds`;
         
-        // If countdown is 0, reload page
+        // If countdown is 0, reload page but with protection against infinite loops
         if (countdown <= 0) {
-            window.location.reload();
+            // Check when the last reload happened to prevent tight loops
+            const lastReload = localStorage.getItem('last_reload_time');
+            const now = Date.now();
+            
+            if (!lastReload || (now - parseInt(lastReload)) > 2000) { // Only reload if >2 seconds since last reload
+                // Set the last reload time
+                localStorage.setItem('last_reload_time', now.toString());
+                window.location.reload();
+            } else {
+                // If we're in a potential loop, redirect to dashboard instead
+                console.error('Detected potential reload loop, redirecting to dashboard');
+                window.location.href = 'dashboard.php';
+            }
         }
+    },
     },
     
     /**

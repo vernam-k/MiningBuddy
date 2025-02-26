@@ -113,6 +113,19 @@ try {
         $endingTime = strtotime($operation['ended_at']) - 5; // 5 seconds countdown
         $now = time();
         $countdown = max(0, $endingTime - $now);
+        
+        // If countdown is zero, update operation status to ended
+        if ($countdown === 0) {
+            $updateStmt = $db->prepare("
+                UPDATE mining_operations
+                SET status = 'ended', termination_type = 'manual'
+                WHERE operation_id = ? AND status = 'ending'
+            ");
+            $updateStmt->execute([$operationId]);
+            
+            // Update operation status in the current response
+            $operation['status'] = 'ended';
+        }
     } else if ($operation['status'] === 'syncing') {
         // Calculate seconds remaining in sync period
         $syncEndTime = strtotime($operation['ended_at']) + 600; // 10 minutes sync
